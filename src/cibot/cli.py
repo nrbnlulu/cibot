@@ -3,6 +3,7 @@ from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
+from cibot.plugins.diffcov import DiffCovPlugin
 import jinja2
 import msgspec
 import typer
