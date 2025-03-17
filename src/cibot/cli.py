@@ -74,6 +74,7 @@ def get_backend(pr_number: int | None) -> CiBotBackendBase:
 PLUGINS_REGISTRY = {
 	"deferred_release": DeferredReleasePlugin,
 	"semver": SemverPlugin,
+	"diffcov": DiffCovPlugin,
 }
 
 
