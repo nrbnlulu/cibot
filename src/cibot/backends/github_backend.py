@@ -5,7 +5,6 @@ import github.PullRequest
 from github.Repository import Repository
 from loguru import logger
 from pydantic_settings import BaseSettings
-from pygments.util import tag_re
 
 from cibot.backends.base import CiBotBackendBase, PRContributor, PrDescription, ReleaseInfo
 from cibot.storage_layers.base import BaseStorage
@@ -44,14 +43,14 @@ class GithubBackend(CiBotBackendBase):
 		self.git("config", "user.email", "cibot@no.reply")
 
 	@override
-	def create_pr_comment(self, content: str) -> None:
+	def create_pr_comment(self, content: str, comment_id: str | None = None) -> None:
 		if not self.pr_number:
 			raise ValueError("pr_number is not set")
 
 		self._create_or_update_bot_comment(
 			self.pr_number,
 			content,
-			self.BOT_COMMENT_ID,
+			comment_id or self.BOT_COMMENT_ID,
 		)
 
 	@override

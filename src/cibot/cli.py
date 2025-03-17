@@ -3,7 +3,6 @@ from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
-from cibot.plugins.diffcov import DiffCovPlugin
 import jinja2
 import msgspec
 import typer
@@ -12,6 +11,7 @@ from typer import Typer
 
 from cibot.backends.base import CiBotBackendBase
 from cibot.plugins.base import CiBotPlugin, VersionBumpPlugin
+from cibot.plugins.diffcov import DiffCovPlugin
 from cibot.plugins.semver import SemverPlugin
 from cibot.settings import CiBotSettings
 from cibot.storage_layers.base import BaseStorage
@@ -120,8 +120,8 @@ class PluginRunner:
 		if release_type := next((res for res in results if res is not None), None):
 			# find plugin for release_type
 			version_bump_plugin = next(
-					plugin for plugin in self.plugins if isinstance(plugin, VersionBumpPlugin)
-				)
+				plugin for plugin in self.plugins if isinstance(plugin, VersionBumpPlugin)
+			)
 			logger.info(f"Found version bump plugin: {version_bump_plugin.plugin_name()}")
 			next_version = version_bump_plugin.next_version(release_type)
 			release_marker = ReleasePrMarker(pr, bump_type=release_type.name)
@@ -130,23 +130,27 @@ class PluginRunner:
 				return
 
 			logger.info(f"next version is {next_version}")
-			git_changes = list(itertools.chain(
-				*[plugin.prepare_release(release_type, next_version) for plugin in self.plugins]
-			))
+			git_changes = list(
+				itertools.chain(
+					*[plugin.prepare_release(release_type, next_version) for plugin in self.plugins]
+				)
+			)
 			logger.info(f"commiting {git_changes} changes")
 			if git_changes:
 				for change in git_changes:
 					self.backend.git("add", str(change))
 				self.backend.git("commit", "-m", f"Prepare release for PR #{pr}")
 				self.backend.git("push")
-				
+
 			self.check_for_errors()
 			self.storage.set(release_marker.as_key(), release_marker)
 		self.comment_on_pr(pr)
 
 	def on_commit_to_main(self):
-		
-		release_infos = [plugin.on_commit_to_main(self.backend.get_current_commit_hash()) for plugin in self.plugins]
+		release_infos = [
+			plugin.on_commit_to_main(self.backend.get_current_commit_hash())
+			for plugin in self.plugins
+		]
 		release_info = next((info for info in release_infos if info), None)
 		if release_info:
 			self.backend.publish_release(release_info)

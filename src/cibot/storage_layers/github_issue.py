@@ -19,7 +19,8 @@ class Settings(BaseSettings):
 
 class Bucket(msgspec.Struct):
 	plugin_srorage: dict[str, str]
-	
+
+
 COMMENT_BASE = """
 ### CIBot Storage Layer
 ### Do not edit this comment
@@ -65,6 +66,7 @@ class GithubIssueStorage(BaseStorage):
 				json.dumps(msgspec.to_builtins(Bucket(plugin_srorage={key: raw})), indent=2)
 			)
 		self.issue.edit(body=textwrap.dedent(new_comment))
+
 	@override
 	def delete(self, key: str) -> None:
 		if bucket := self.get_json_part_from_comment():

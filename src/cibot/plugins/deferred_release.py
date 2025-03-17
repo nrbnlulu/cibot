@@ -1,11 +1,9 @@
 import datetime
 import enum
 import json
-import re
 import textwrap
 from collections import defaultdict
 from pathlib import Path
-from termios import VERASE
 from typing import ClassVar, override
 
 import msgspec

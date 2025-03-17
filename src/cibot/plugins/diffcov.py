@@ -1,22 +1,16 @@
-import os
-import sys
 import xml.etree.ElementTree as etree
 from dataclasses import dataclass
 from io import BytesIO
-from math import prod
 from pathlib import Path
 from typing import override
 
 import jinja2
-from click import secho
 from diff_cover.diff_reporter import GitDiffReporter
 from diff_cover.git_diff import GitDiffTool
-from diff_cover.git_path import GitPathTool
 from diff_cover.report_generator import MarkdownReportGenerator
 from diff_cover.violationsreporters.violations_reporter import (
 	XmlCoverageReporter,
 )
-from loguru import logger
 from pydantic_settings import BaseSettings
 
 from cibot.plugins.base import BumpType, CiBotPlugin
@@ -99,4 +93,7 @@ class DiffCovPlugin(CiBotPlugin):
 		comment = COVERAGE_TEMPLATE.render(
 			sections=sections,
 		)
-		self._pr_comment = comment
+		self.backend.create_pr_comment(comment, DIFF_COV_COMMENT_ID)
+
+
+DIFF_COV_COMMENT_ID = "diffcov-766f-49c7-a1a8-59f7be1fee8f"

@@ -1,6 +1,6 @@
-from dataclasses import dataclass
 import subprocess
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 
 from msgspec import Struct
 
@@ -18,7 +18,8 @@ class ReleaseInfo:
 	header: str
 	note: str
 	version: str
-	
+
+
 ERROR_GIF = "![](https://media1.tenor.com/m/FOzbM2mVKG0AAAAC/error-windows-xp.gif)"
 
 
@@ -37,11 +38,11 @@ class CiBotBackendBase(ABC):
 	def name(self) -> str: ...
 
 	@abstractmethod
-	def create_pr_comment(self, content: str) -> None: ...
+	def create_pr_comment(self, content: str, comment_id: str | None = None) -> None: ...
 
 	@abstractmethod
 	def publish_release(self, release_info: ReleaseInfo) -> None: ...
-	
+
 	def run_cmd(self, *args: str) -> None:
 		return subprocess.run([*args], check=False).check_returncode()
 

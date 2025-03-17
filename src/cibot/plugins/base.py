@@ -1,8 +1,6 @@
 import enum
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from pathlib import Path
-from re import S
 from typing import ClassVar
 
 from cibot.backends.base import CiBotBackendBase, ReleaseInfo
@@ -18,7 +16,6 @@ class BumpType(enum.Enum):
 	MINOR = "minor"
 	MAJOR = "major"
 	PATCH = "patch"
-
 
 
 class CiBotPlugin(ABC):
