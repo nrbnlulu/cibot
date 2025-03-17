@@ -65,7 +65,7 @@ class DiffCovSettings(BaseSettings):
 	model_config = {
 		"env_prefix": "DIFF_COV_",
 	}
-	COMPARE_BRANCH = "main"
+	COMPARE_BRANCH: str = "main"
 	RECURSIVE: bool = True
 	"""Find coverage files recursively"""
 
