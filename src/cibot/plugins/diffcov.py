@@ -1,3 +1,4 @@
+import re
 import xml.etree.ElementTree as etree
 from dataclasses import dataclass
 from io import BytesIO
@@ -30,15 +31,14 @@ def _generate_section_report(
 		markdown_gen = MarkdownReportGenerator(reporter, git_diff_reporter)
 		markdown_gen.generate_report(buffer)
 		markdown_string = buffer.getvalue().decode("utf-8").replace("# Diff Coverage", "")
-		return markdown_string.replace(
-			"## Diff: origin/{branch_name}...HEAD, staged, unstaged and untracked changes",
-			"",
-		)
-		
+		# strip first header
+		markdown_string = markdown_string[markdown_string.find("\n") + 1:]
+		return markdown_string
+
 def create_report_for_cov_file(cov_file: Path, compare_branch: str) -> str | None:
 	git_diff = GitDiffTool(range_notation="...", ignore_whitespace=True)
 	git_diff_reporter = GitDiffReporter(
-		compare_branch=f"origin/{compare_branch}",
+		compare_branch=compare_branch,
 		git_diff=git_diff,
 		include_untracked=True,
 		ignore_staged=False,
