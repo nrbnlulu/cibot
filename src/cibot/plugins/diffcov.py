@@ -1,19 +1,13 @@
 import json
-import re
 import subprocess
-import xml.etree.ElementTree as etree
 from collections import defaultdict
 from dataclasses import dataclass
 from io import BytesIO
-from math import log
-from nt import link
 from pathlib import Path
 from typing import TypedDict, override
 
 import jinja2
-from click import Group
 from diff_cover.diff_reporter import GitDiffReporter
-from diff_cover.git_diff import GitDiffTool
 from diff_cover.report_generator import MarkdownReportGenerator
 from diff_cover.violationsreporters.violations_reporter import (
 	XmlCoverageReporter,
@@ -91,8 +85,7 @@ class DiffCovPlugin(CiBotPlugin):
 								if end - 1 == prev:
 									prev = end
 									continue
-								else:
-									grouped_lines_per_file[file].append((start, end))
+								grouped_lines_per_file[file].append((start, end))
 						except IndexError:
 							grouped_lines_per_file[file].append((start, None))
 			valid_comments: list[tuple[PrReviewComment, tuple[int, int | None]]] = []
@@ -112,8 +105,7 @@ class DiffCovPlugin(CiBotPlugin):
 						)
 						self.backend.delete_pr_review_comment(id_)
 						break
-					else:
-						valid_comments.append((comment, violation))
+					valid_comments.append((comment, violation))
 
 			for file, violations in grouped_lines_per_file.items():
 				for violation in violations:
@@ -126,20 +118,19 @@ class DiffCovPlugin(CiBotPlugin):
 								f"skipping creating review comment for violation {file} {violation}"
 							)
 							break
-						else:
-							logger.info(
-								f"Creating new comment for file {violation[0]} in lines {violation[0]}-{violation[1]}"
+						logger.info(
+							f"Creating new comment for file {violation[0]} in lines {violation[0]}-{violation[1]}"
+						)
+						self.backend.create_pr_review_comment(
+							PrReviewComment(
+								content="not covered",
+								content_id=DIFF_COV_REVIEW_COMMENT_ID,
+								start_line=violation[0] if violation[1] else None,
+								end_line=violation[1] if violation[1] else violation[0],
+								file=file,
+								pr_number=pr,
 							)
-							self.backend.create_pr_review_comment(
-								PrReviewComment(
-									content="not covered",
-									content_id=DIFF_COV_REVIEW_COMMENT_ID,
-									start_line=violation[0] if violation[1] else None,
-									end_line=violation[1] if violation[1] else violation[0],
-									file=file,
-									pr_number=pr,
-								)
-							)
+						)
 
 
 DIFF_COV_REVIEW_COMMENT_ID = "diffcov-766f-49c7-a1a8-59f7be1fee8f"
@@ -163,7 +154,7 @@ class Report(TypedDict):
 
 def create_report_for_cov_file(cov_file: Path, compare_branch: str) -> Report:
 	cmd = f"diff-cover coverage.xml --compare-branch={compare_branch} --json-report report.json"
-	if subprocess.run(cmd, shell=True).returncode != 0:
+	if subprocess.run(cmd, shell=True, check=False).returncode != 0:
 		raise ValueError("Failed to generate coverage report")
 
 	report: Report = json.loads((Path.cwd() / "report.json").read_text())

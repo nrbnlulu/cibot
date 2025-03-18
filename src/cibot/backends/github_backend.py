@@ -7,7 +7,13 @@ from github.Repository import Repository
 from loguru import logger
 from pydantic_settings import BaseSettings
 
-from cibot.backends.base import CiBotBackendBase, PRContributor, PrDescription, PrReviewComment, ReleaseInfo
+from cibot.backends.base import (
+	CiBotBackendBase,
+	PRContributor,
+	PrDescription,
+	PrReviewComment,
+	ReleaseInfo,
+)
 from cibot.storage_layers.base import BaseStorage
 
 
@@ -53,30 +59,22 @@ class GithubBackend(CiBotBackendBase):
 			content,
 			comment_id or self.BOT_COMMENT_ID,
 		)
+
 	@override
 	def create_pr_review_comment(self, comment: PrReviewComment) -> None:
-		
 		latest_commit = self._pr.get_commits().reversed[0]
-		content = \
-f"""
+		content = f"""
 [//]: {self.BOT_COMMENT_ID}
 {comment.content}
-"""	
+"""
 		start, end = comment.start_line, comment.end_line
 		if start:
 			self._pr.create_review_comment(
-				body=content,
-				path=comment.file,
-				start_line=start,
-				line=end,
-				commit=latest_commit
+				body=content, path=comment.file, start_line=start, line=end, commit=latest_commit
 			)
 		else:
 			self._pr.create_review_comment(
-				body=content,
-				path=comment.file,
-				line=end,
-				commit=latest_commit
+				body=content, path=comment.file, line=end, commit=latest_commit
 			)
 
 	@override
@@ -91,7 +89,7 @@ f"""
 					start_line=comment.start_line,
 					end_line=comment.line,
 					content=comment.body,
-					pr_number=self._pr.number
+					pr_number=self._pr.number,
 				)
 				ret.append((comment.id, pr_comment))
 		return ret
@@ -99,7 +97,6 @@ f"""
 	@override
 	def delete_pr_review_comment(self, comment_id: int) -> None:
 		self._pr.get_review_comment(comment_id).delete()
-		
 
 	@override
 	def publish_release(self, release_info: ReleaseInfo):
@@ -135,7 +132,7 @@ f"""
 	@override
 	def get_pr_labels(self, pr_number):
 		return [label.name for label in self.repo.get_pull(pr_number).labels]
-	
+
 	@cached_property
 	def _pr(self) -> github.PullRequest.PullRequest:
 		assert self.pr_number is not None, "pr_number is not set"
