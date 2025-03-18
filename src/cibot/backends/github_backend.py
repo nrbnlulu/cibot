@@ -65,7 +65,7 @@ class GithubBackend(CiBotBackendBase):
 	def create_pr_review_comment(self, comment: PrReviewComment) -> None:
 		latest_commit = self._pr.get_commits().reversed[0]
 		content = f"""
-[//]: {self.BOT_COMMENT_ID}
+[//]: {comment.content_id}
 {comment.content}
 """
 		start, end = comment.start_line, comment.end_line
