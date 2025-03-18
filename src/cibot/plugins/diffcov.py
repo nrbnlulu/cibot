@@ -46,7 +46,7 @@ class DiffCovSettings(BaseSettings):
 	COMPARE_BRANCH: str = "main"
 	RECURSIVE: bool = True
 	"""Find coverage files recursively"""
-
+	FAIL_UNDER: float = 100.0
 
 class DiffCovPlugin(CiBotPlugin):
 	@override
@@ -71,6 +71,7 @@ class DiffCovPlugin(CiBotPlugin):
 			cov_files = [Path.cwd() / "coverage.xml"]
 
 		grouped_lines_per_file: dict[str, list[tuple[int, int | None]]] = {}
+		fail_under_lints: dict[str, str] = {}
 		for cov_file in cov_files:
 			section_name = cov_file.parent.name
 			report = create_report_for_cov_file(cov_file, settings.COMPARE_BRANCH)
@@ -78,7 +79,13 @@ class DiffCovPlugin(CiBotPlugin):
 			for file, stats in report["src_stats"].items():
 				grouped_lines_per_file[file] = self._group_violations(stats["violation_lines"])
 				logger.info(f"Grouped lines for {file}: {grouped_lines_per_file[file]}")
-
+			# check fail under
+			if report["total_percent_covered"] < settings.FAIL_UNDER:
+				logger.error(f"Coverage failed under {settings.FAIL_UNDER}%")
+				self._pr_comment += f"Coverage failed for {section_name} section\n" + 
+				f"expected {settings.FAIL_UNDER}% got {report['total_percent_covered']}"
+				self._should_fail_work_flow = True
+				
 		valid_comments: list[tuple[PrReviewComment, tuple[int, int | None]]] = []
 		for id_, comment in self.backend.get_review_comments_for_content_id(
 			DIFF_COV_REVIEW_COMMENT_ID
@@ -100,7 +107,8 @@ class DiffCovPlugin(CiBotPlugin):
 						pr_number=pr,
 					)
 				)
-
+		
+		
 	def _group_violations(self, violation_lines: list[int]) -> list[tuple[int, int | None]]:
 		"""
 		return a list of tuples that are basically ranges of serially increasing numbers.
