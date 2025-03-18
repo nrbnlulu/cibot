@@ -22,7 +22,19 @@ template_env = jinja2.Environment(
 
 COVERAGE_TEMPLATE = template_env.get_template("coverage.jinja.md")
 
-
+def _generate_section_report(
+	reporter: XmlCoverageReporter, git_diff_reporter: GitDiffReporter, compare_branch: str
+) -> str:
+	"""Generate report for a single section."""
+	with BytesIO() as buffer:
+		markdown_gen = MarkdownReportGenerator(reporter, git_diff_reporter)
+		markdown_gen.generate_report(buffer)
+		markdown_string = buffer.getvalue().decode("utf-8").replace("# Diff Coverage", "")
+		return markdown_string.replace(
+			"## Diff: origin/{branch_name}...HEAD, staged, unstaged and untracked changes",
+			"",
+		)
+		
 def create_report_for_cov_file(cov_file: Path, compare_branch: str) -> str | None:
 	git_diff = GitDiffTool(range_notation="...", ignore_whitespace=True)
 	git_diff_reporter = GitDiffReporter(
@@ -32,26 +44,12 @@ def create_report_for_cov_file(cov_file: Path, compare_branch: str) -> str | Non
 		ignore_staged=False,
 		ignore_unstaged=False,
 	)
-
-	def _generate_section_report(
-		reporter: XmlCoverageReporter,
-	) -> str:
-		"""Generate report for a single section."""
-		with BytesIO() as buffer:
-			markdown_gen = MarkdownReportGenerator(reporter, git_diff_reporter)
-			markdown_gen.generate_report(buffer)
-			markdown_string = buffer.getvalue().decode("utf-8").replace("# Diff Coverage", "")
-			return markdown_string.replace(
-				"## Diff: origin/main...HEAD, staged, unstaged and untracked changes",
-				"",
-			)
-
 	section_name = cov_file.parent.name
 	reporter = XmlCoverageReporter(
 		[etree.parse(cov_file)],
 		src_roots=[Path.cwd()],
 	)
-	section_md = _generate_section_report(reporter)
+	section_md = _generate_section_report(reporter, git_diff_reporter, compare_branch=compare_branch)
 	if "No lines with coverage information in this diff." not in section_md:
 		return section_md
 
