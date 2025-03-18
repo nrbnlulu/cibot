@@ -69,60 +69,49 @@ class DiffCovPlugin(CiBotPlugin):
 			cov_files = list(Path.cwd().rglob("coverage.xml"))
 		else:
 			cov_files = [Path.cwd() / "coverage.xml"]
+
+		grouped_lines_per_file: dict[str, list[tuple[int, int | None]]] = {}
 		for cov_file in cov_files:
 			section_name = cov_file.parent.name
 			report = create_report_for_cov_file(cov_file, settings.COMPARE_BRANCH)
-			grouped_lines_per_file: dict[str, list[tuple[int, int | None]]] = {}
 			logger.info(f"Processing coverage report for {section_name}\n report is {report}")
 			for file, stats in report["src_stats"].items():
 				grouped_lines_per_file[file] = self._group_violations(stats["violation_lines"])
 				logger.info(f"Grouped lines for {file}: {grouped_lines_per_file[file]}")
 
-			valid_comments: list[tuple[PrReviewComment, tuple[int, int | None]]] = []
-			for id_, comment in self.backend.get_review_comments_for_content_id(
-				DIFF_COV_REVIEW_COMMENT_ID
-			):
-				if comment.file not in grouped_lines_per_file:
-					logger.info(
-						f"{comment.file} is not in the missed cov report deleting prev comment"
-					)
-					self.backend.delete_pr_review_comment(id_)
-					continue
-				for violation in grouped_lines_per_file[comment.file]:
-					if violation[0] != comment.start_line and violation[0] != comment.end_line:
-						logger.add(
-							f"Deleting comment {id_} for file {comment.file} in lines {violation[0]}-{violation[1]}"
-						)
-						self.backend.delete_pr_review_comment(id_)
-						break
-					valid_comments.append((comment, violation))
+		valid_comments: list[tuple[PrReviewComment, tuple[int, int | None]]] = []
+		for id_, comment in self.backend.get_review_comments_for_content_id(
+			DIFF_COV_REVIEW_COMMENT_ID
+		):
+			# for now we'll recreate all comments on every run due to complexity management
+			self.backend.delete_pr_review_comment(id_)
 
-			for file, violations in grouped_lines_per_file.items():
-				for violation in violations:
-					start_line, end_line = violation
-					for valid_comment, comment_violation in valid_comments:
-						if (
-							comment_violation[0] == start_line
-							and comment_violation[1] == end_line
-						):
-							logger.info(
-								f"skipping creating review comment for violation {file} {violation}"
+		for file, violations in grouped_lines_per_file.items():
+			for violation in violations:
+				start_line, end_line = violation
+				for valid_comment, comment_violation in valid_comments:
+					if (
+						comment_violation[0] == start_line
+						and comment_violation[1] == end_line
+					):
+						logger.info(
+							f"skipping creating review comment for violation {file} {violation}"
+						)
+						break
+					else:
+						logger.info(
+							f"Creating new comment for file {file} in lines {start_line}-{end_line}"
+						)
+						self.backend.create_pr_review_comment(
+							PrReviewComment(
+								content=f"⛔ Missing coverage from line {start_line} to line {end_line}",
+								content_id=DIFF_COV_REVIEW_COMMENT_ID,
+								start_line=start_line if end_line != start_line else None,
+								end_line=end_line or start_line,
+								file=file,
+								pr_number=pr,
 							)
-							break
-						else:
-							logger.info(
-								f"Creating new comment for file {file} in lines {start_line}-{end_line}"
-							)
-							self.backend.create_pr_review_comment(
-								PrReviewComment(
-									content=f"⛔ Missing coverage from line {start_line} to line {end_line}",
-									content_id=DIFF_COV_REVIEW_COMMENT_ID,
-									start_line=start_line if end_line != start_line else None,
-									end_line=end_line or start_line,
-									file=file,
-									pr_number=pr,
-								)
-							)
+						)
 
 	def _group_violations(self, violation_lines: list[int]) -> list[tuple[int, int | None]]:
 		"""
