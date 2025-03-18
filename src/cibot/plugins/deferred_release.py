@@ -74,7 +74,6 @@ class DeferredReleasePlugin(CiBotPlugin):
 	```
 	"""
 
-	supported_backednds: ClassVar[tuple[str, ...]] = ("github",)
 
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
@@ -83,6 +82,9 @@ class DeferredReleasePlugin(CiBotPlugin):
 	@override
 	def plugin_name(self) -> str:
 		return "Deferred Release"
+	
+	def supported_backends(self) -> tuple[str, ...]:
+		return ("github",)
 
 	@override
 	def on_pr_changed(self, pr) -> None | BumpType:

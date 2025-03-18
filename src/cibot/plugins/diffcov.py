@@ -75,6 +75,10 @@ class DiffCovPlugin(CiBotPlugin):
 	@override
 	def plugin_name(self) -> str:
 		return "Diff Coverage"
+	
+	def supported_backends(self) -> tuple[str, ...]:
+		return ("*",)
+	
 	@property
 	def settings(self) -> DiffCovSettings:
 		return DiffCovSettings()
