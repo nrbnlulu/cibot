@@ -89,14 +89,13 @@ class DeferredReleasePlugin(CiBotPlugin):
 	def on_pr_changed(self, pr) -> None | BumpType:
 		match note := self._parse_pr(pr):
 			case ChangeNote():
-				self._pr_comment = textwrap.dedent(
-					f"""
-                    ### {note.header}
-                    Change Type: {note.change_type.value}
-                    Description:
-                    {note.description}
-                    """
-				)
+				self._pr_comment = f"""
+### {note.header}
+Change Type: {note.change_type.value}
+Description:
+
+{note.description}
+"""
 			case ReleasePrDesc():
 				self._release_desc = note
 				self._pr_comment = self._get_release_repr(note)
