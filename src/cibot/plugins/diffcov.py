@@ -72,22 +72,13 @@ class DiffCovPlugin(CiBotPlugin):
 		for cov_file in cov_files:
 			section_name = cov_file.parent.name
 			report = create_report_for_cov_file(cov_file, settings.COMPARE_BRANCH)
-			grouped_lines_per_file: defaultdict[str, list[tuple[int, int | None]]] = defaultdict(
-				list
-			)
+			grouped_lines_per_file: dict[str, list[tuple[int, int | None]]] = {}
+			logger.info(f"Processing coverage report for {section_name}\n report is {report}")
 			for file, stats in report["src_stats"].items():
 				violation_lines = stats.get("violation_lines", [])
 				if violation_lines:
-					for i, start in enumerate(violation_lines):
-						try:
-							prev = start
-							for end in violation_lines[i + 1 :]:
-								if end - 1 == prev:
-									prev = end
-									continue
-								grouped_lines_per_file[file].append((start, end))
-						except IndexError:
-							grouped_lines_per_file[file].append((start, None))
+					grouped_lines_per_file[file] = self._group_violations(violation_lines)
+					
 			valid_comments: list[tuple[PrReviewComment, tuple[int, int | None]]] = []
 			for id_, comment in self.backend.get_review_comments_for_content_id(
 				DIFF_COV_REVIEW_COMMENT_ID
@@ -131,6 +122,20 @@ class DiffCovPlugin(CiBotPlugin):
 								pr_number=pr,
 							)
 						)
+
+	def _group_violations(self, violation_lines: list[int]) -> list[tuple[int, int | None]]:
+		ret: list[tuple[int, int | None]] = []
+		for i, start in enumerate(violation_lines):
+			try:
+				prev = start
+				for end in violation_lines[i + 1 :]:
+					if end - 1 == prev:
+						prev = end
+						continue
+					ret.append((start, end))
+			except IndexError:
+				ret.append((start, None))
+		return ret
 
 
 DIFF_COV_REVIEW_COMMENT_ID = "diffcov-766f-49c7-a1a8-59f7be1fee8f"
