@@ -83,7 +83,7 @@ class DiffCovPlugin(CiBotPlugin):
 			if report["total_percent_covered"] < settings.FAIL_UNDER:
 				logger.error(f"Coverage failed under {settings.FAIL_UNDER}%")
 				self._pr_comment = (
-					f"{self._pr_comment or ''}\n#### Coverage failed for {section_name} section\n"
+					f"{self._pr_comment or ''}\n#### 🔴 Coverage failed for {section_name} section\n"
 					+ f"expected {settings.FAIL_UNDER}% got {report['total_percent_covered']}"
 				)
 				self._should_fail_work_flow = True
@@ -109,7 +109,11 @@ class DiffCovPlugin(CiBotPlugin):
 						pr_number=pr,
 					)
 				)
+		
+		if not self._should_fail_work_flow:
+			self._pr_comment = f"### ✅ Coverage passed"
 
+			
 	def _group_violations(self, violation_lines: list[int]) -> list[tuple[int, int | None]]:
 		"""
 		Return a list of tuples that are basically ranges of serially increasing numbers.
