@@ -71,6 +71,10 @@ class CovReport:
 
 
 class DiffCovPlugin(CiBotPlugin):
+	
+	@override
+	def plugin_name(self) -> str:
+		return "Diff Coverage"
 	@property
 	def settings(self) -> DiffCovSettings:
 		return DiffCovSettings()
