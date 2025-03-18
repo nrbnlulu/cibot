@@ -75,10 +75,9 @@ class DiffCovPlugin(CiBotPlugin):
 			grouped_lines_per_file: dict[str, list[tuple[int, int | None]]] = {}
 			logger.info(f"Processing coverage report for {section_name}\n report is {report}")
 			for file, stats in report["src_stats"].items():
-				violation_lines = stats.get("violation_lines", [])
-				if violation_lines:
-					grouped_lines_per_file[file] = self._group_violations(violation_lines)
-					
+				grouped_lines_per_file[file] = self._group_violations(stats["violation_lines"])
+				logger.info(f"Grouped lines for {file}: {grouped_lines_per_file[file]}")
+				
 			valid_comments: list[tuple[PrReviewComment, tuple[int, int | None]]] = []
 			for id_, comment in self.backend.get_review_comments_for_content_id(
 				DIFF_COV_REVIEW_COMMENT_ID
