@@ -138,5 +138,3 @@ class GithubBackend(CiBotBackendBase):
 	def _pr(self) -> github.PullRequest.PullRequest:
 		assert self.pr_number is not None, "pr_number is not set"
 		return self.repo.get_pull(self.pr_number)
-
-

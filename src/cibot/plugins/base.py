@@ -40,7 +40,7 @@ class CiBotPlugin(ABC):
 
 	@abstractmethod
 	def supported_backends(self) -> tuple[str, ...]: ...
-	
+
 	def pr_comment_id(self) -> str:
 		return f"popo kaka baba jojo {self.plugin_name()}"
 

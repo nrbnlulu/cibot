@@ -1,6 +1,5 @@
 import json
 import subprocess
-from collections import defaultdict
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
@@ -48,6 +47,7 @@ class DiffCovSettings(BaseSettings):
 	"""Find coverage files recursively"""
 	FAIL_UNDER: float = 100.0
 
+
 class DiffCovPlugin(CiBotPlugin):
 	@override
 	def plugin_name(self) -> str:
@@ -82,10 +82,12 @@ class DiffCovPlugin(CiBotPlugin):
 			# check fail under
 			if report["total_percent_covered"] < settings.FAIL_UNDER:
 				logger.error(f"Coverage failed under {settings.FAIL_UNDER}%")
-				self._pr_comment += f"\n#### Coverage failed for {section_name} section\n" + 
-				f"expected {settings.FAIL_UNDER}% got {report['total_percent_covered']}"
+				self._pr_comment = (
+					f"{self._pr_comment or ''}\n#### Coverage failed for {section_name} section\n"
+					+ f"expected {settings.FAIL_UNDER}% got {report['total_percent_covered']}"
+				)
 				self._should_fail_work_flow = True
-				
+
 		valid_comments: list[tuple[PrReviewComment, tuple[int, int | None]]] = []
 		for id_, comment in self.backend.get_review_comments_for_content_id(
 			DIFF_COV_REVIEW_COMMENT_ID
@@ -95,11 +97,11 @@ class DiffCovPlugin(CiBotPlugin):
 
 		for file, violations in grouped_lines_per_file.items():
 			for violation in violations:
-				start_line, end_line = violation	
+				start_line, end_line = violation
 				self.backend.create_pr_review_comment(
 					PrReviewComment(
-						content=f"⛔ Missing coverage from line {start_line} to line {end_line}" + 
-						"\n<sup>**Don't comment here, it will be deleted**</sup>",
+						content=f"⛔ Missing coverage from line {start_line} to line {end_line}"
+						+ "\n<sup>**Don't comment here, it will be deleted**</sup>",
 						content_id=DIFF_COV_REVIEW_COMMENT_ID,
 						start_line=start_line if end_line != start_line else None,
 						end_line=end_line or start_line,
@@ -107,11 +109,10 @@ class DiffCovPlugin(CiBotPlugin):
 						pr_number=pr,
 					)
 				)
-		
-		
+
 	def _group_violations(self, violation_lines: list[int]) -> list[tuple[int, int | None]]:
 		"""
-		return a list of tuples that are basically ranges of serially increasing numbers.
+		Return a list of tuples that are basically ranges of serially increasing numbers.
 
 		i.e
 		[1, 2, 3, 8, 9, 11]
@@ -132,6 +133,7 @@ class DiffCovPlugin(CiBotPlugin):
 				end = num
 		ret.append((start, end))
 		return ret
+
 
 DIFF_COV_REVIEW_COMMENT_ID = "diffcov-766f-49c7-a1a8-59f7be1fee8f"
 
