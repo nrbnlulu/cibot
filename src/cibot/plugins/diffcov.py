@@ -91,7 +91,8 @@ class DiffCovPlugin(CiBotPlugin):
 				start_line, end_line = violation	
 				self.backend.create_pr_review_comment(
 					PrReviewComment(
-						content=f"⛔ Missing coverage from line {start_line} to line {end_line}",
+						content=f"⛔ Missing coverage from line {start_line} to line {end_line}" + 
+						"\n<sub><sup>*Don't comment here, it will be deleted*</sup></sub>",
 						content_id=DIFF_COV_REVIEW_COMMENT_ID,
 						start_line=start_line if end_line != start_line else None,
 						end_line=end_line or start_line,
