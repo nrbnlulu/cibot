@@ -82,7 +82,7 @@ class DiffCovPlugin(CiBotPlugin):
 			# check fail under
 			if report["total_percent_covered"] < settings.FAIL_UNDER:
 				logger.error(f"Coverage failed under {settings.FAIL_UNDER}%")
-				self._pr_comment += f"Coverage failed for {section_name} section\n" + 
+				self._pr_comment += f"\n#### Coverage failed for {section_name} section\n" + 
 				f"expected {settings.FAIL_UNDER}% got {report['total_percent_covered']}"
 				self._should_fail_work_flow = True
 				
