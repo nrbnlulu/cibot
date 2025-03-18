@@ -41,8 +41,7 @@ class GithubIssueStorage(BaseStorage):
 		self.issue = issue
 
 	def get_json_part_from_comment(self) -> Bucket | None:
-		body = self.issue.body
-		if body:
+		if body := self.issue.body:
 			body = body.split("```json")[1].split("```")[0].strip()
 			return msgspec.json.decode(body, type=Bucket)
 

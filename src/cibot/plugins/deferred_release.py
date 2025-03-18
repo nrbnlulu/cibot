@@ -4,7 +4,7 @@ import json
 import textwrap
 from collections import defaultdict
 from pathlib import Path
-from typing import ClassVar, override
+from typing import override
 
 import msgspec
 from loguru import logger
@@ -74,7 +74,6 @@ class DeferredReleasePlugin(CiBotPlugin):
 	```
 	"""
 
-
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self._release_desc: ReleasePrDesc | None = None
@@ -82,7 +81,7 @@ class DeferredReleasePlugin(CiBotPlugin):
 	@override
 	def plugin_name(self) -> str:
 		return "Deferred Release"
-	
+
 	def supported_backends(self) -> tuple[str, ...]:
 		return ("github",)
 

@@ -1,7 +1,6 @@
 import enum
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import ClassVar
 
 from cibot.backends.base import CiBotBackendBase, ReleaseInfo
 from cibot.storage_layers.base import BaseStorage
@@ -19,7 +18,6 @@ class BumpType(enum.Enum):
 
 
 class CiBotPlugin(ABC):
-
 	def __init__(self, backend: CiBotBackendBase, storage: BaseStorage) -> None:
 		self.backend = backend
 		self.storage = storage
@@ -39,7 +37,7 @@ class CiBotPlugin(ABC):
 
 	@abstractmethod
 	def plugin_name(self) -> str: ...
-	
+
 	@abstractmethod
 	def supported_backends(self) -> tuple[str, ...]: ...
 
