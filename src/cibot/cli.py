@@ -165,11 +165,9 @@ class PluginRunner:
 		plugin_comments = {
 			plugin.plugin_name(): plugin.provide_comment_for_pr() for plugin in self.plugins
 		}
-		content = ""
 		for plugin_name, comment in plugin_comments.items():
 			if comment:
-				content += f"### {plugin_name}\n{comment}\n___\n"
-		self.backend.create_pr_comment(content)
+				self.backend.upsert_pr_comment(comment[0], comment_id=comment[1])
 
 
 def get_runner(plugins: list[str], pr_number: int | None = None) -> PluginRunner:

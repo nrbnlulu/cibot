@@ -88,30 +88,17 @@ class DiffCovPlugin(CiBotPlugin):
 
 		for file, violations in grouped_lines_per_file.items():
 			for violation in violations:
-				start_line, end_line = violation
-				for valid_comment, comment_violation in valid_comments:
-					if (
-						comment_violation[0] == start_line
-						and comment_violation[1] == end_line
-					):
-						logger.info(
-							f"skipping creating review comment for violation {file} {violation}"
-						)
-						break
-					else:
-						logger.info(
-							f"Creating new comment for file {file} in lines {start_line}-{end_line}"
-						)
-						self.backend.create_pr_review_comment(
-							PrReviewComment(
-								content=f"⛔ Missing coverage from line {start_line} to line {end_line}",
-								content_id=DIFF_COV_REVIEW_COMMENT_ID,
-								start_line=start_line if end_line != start_line else None,
-								end_line=end_line or start_line,
-								file=file,
-								pr_number=pr,
-							)
-						)
+				start_line, end_line = violation	
+				self.backend.create_pr_review_comment(
+					PrReviewComment(
+						content=f"⛔ Missing coverage from line {start_line} to line {end_line}",
+						content_id=DIFF_COV_REVIEW_COMMENT_ID,
+						start_line=start_line if end_line != start_line else None,
+						end_line=end_line or start_line,
+						file=file,
+						pr_number=pr,
+					)
+				)
 
 	def _group_violations(self, violation_lines: list[int]) -> list[tuple[int, int | None]]:
 		"""

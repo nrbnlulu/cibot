@@ -40,14 +40,19 @@ class CiBotPlugin(ABC):
 
 	@abstractmethod
 	def supported_backends(self) -> tuple[str, ...]: ...
+	
+	def pr_comment_id(self) -> str:
+		return f"popo kaka baba jojo {self.plugin_name()}"
 
-	def provide_comment_for_pr(self) -> str | None:
+	def provide_comment_for_pr(self) -> tuple[str, str] | None:
 		"""
 		Get the comment from the PR description.
 
 		this would be used in conjunction with the plugin name in the bot comment.
 		"""
-		return self._pr_comment
+		if self._pr_comment:
+			return self._pr_comment, self.pr_comment_id()
+		return None
 
 	def should_fail_workflow(self) -> bool:
 		"""

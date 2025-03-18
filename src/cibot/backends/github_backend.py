@@ -50,15 +50,16 @@ class GithubBackend(CiBotBackendBase):
 		self.git("config", "user.email", "cibot@no.reply")
 
 	@override
-	def create_pr_comment(self, content: str, comment_id: str | None = None) -> None:
-		if not self.pr_number:
-			raise ValueError("pr_number is not set")
+	def upsert_pr_comment(self, content: str, comment_id: str) -> None:
+		pr = self._pr
 
-		self._create_or_update_bot_comment(
-			self.pr_number,
-			content,
-			comment_id or self.BOT_COMMENT_ID,
-		)
+		for comment in pr.get_issue_comments().reversed:
+			if comment_id in comment.body:
+				comment.delete()
+				break
+		content += f"\n<!--CIBOT-COMMENT-ID {comment_id} -->"
+		# If no comment was found, create a new one
+		pr.create_issue_comment(content)
 
 	@override
 	def create_pr_review_comment(self, comment: PrReviewComment) -> None:
@@ -138,18 +139,4 @@ class GithubBackend(CiBotBackendBase):
 		assert self.pr_number is not None, "pr_number is not set"
 		return self.repo.get_pull(self.pr_number)
 
-	def _create_or_update_bot_comment(
-		self,
-		pr_number: int,
-		content: str,
-		identifier: str,
-	) -> None:
-		pr = self._pr
 
-		for comment in pr.get_issue_comments():
-			if identifier in comment.body:
-				comment.delete()
-				break
-		content += f"\n<!--CIBOT-COMMENT-ID {identifier} -->"
-		# If no comment was found, create a new one
-		pr.create_issue_comment(content)
