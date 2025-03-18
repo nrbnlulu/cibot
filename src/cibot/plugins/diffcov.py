@@ -26,6 +26,7 @@ COVERAGE_TEMPLATE = template_env.get_template("coverage.jinja.md")
 def create_report_for_cov_file(cov_file: Path, compare_branch: str) -> str | None:
 	git_diff = GitDiffTool(range_notation="...", ignore_whitespace=True)
 	git_diff_reporter = GitDiffReporter(
+		compare_branch=f"origin/{compare_branch}",
 		git_diff=git_diff,
 		include_untracked=True,
 		ignore_staged=False,
