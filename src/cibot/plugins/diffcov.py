@@ -77,7 +77,7 @@ class DiffCovPlugin(CiBotPlugin):
 			for file, stats in report["src_stats"].items():
 				grouped_lines_per_file[file] = self._group_violations(stats["violation_lines"])
 				logger.info(f"Grouped lines for {file}: {grouped_lines_per_file[file]}")
-				
+
 			valid_comments: list[tuple[PrReviewComment, tuple[int, int | None]]] = []
 			for id_, comment in self.backend.get_review_comments_for_content_id(
 				DIFF_COV_REVIEW_COMMENT_ID
@@ -108,6 +108,7 @@ class DiffCovPlugin(CiBotPlugin):
 								f"skipping creating review comment for violation {file} {violation}"
 							)
 							break
+					else:
 						logger.info(
 							f"Creating new comment for file {violation[0]} in lines {violation[0]}-{violation[1]}"
 						)
@@ -123,19 +124,28 @@ class DiffCovPlugin(CiBotPlugin):
 						)
 
 	def _group_violations(self, violation_lines: list[int]) -> list[tuple[int, int | None]]:
-		ret: list[tuple[int, int | None]] = []
-		for i, start in enumerate(violation_lines):
-			try:
-				prev = start
-				for end in violation_lines[i + 1 :]:
-					if end - 1 == prev:
-						prev = end
-						continue
-					ret.append((start, end))
-			except IndexError:
-				ret.append((start, None))
-		return ret
+		"""
+		return a list of tuples that are basically ranges of serially increasing numbers.
 
+		i.e
+		[1, 2, 3, 8, 9, 11]
+		should output
+		[(1, 3), (8, 9), (11, 11)]
+		"""
+		ret: list[tuple[int, int | None]] = []
+		if not violation_lines:
+			return ret
+		start = violation_lines[0]
+		end = violation_lines[0]
+		for num in violation_lines[1:]:
+			if num == end + 1:
+				end = num
+			else:
+				ret.append((start, end))
+				start = num
+				end = num
+		ret.append((start, end))
+		return ret
 
 DIFF_COV_REVIEW_COMMENT_ID = "diffcov-766f-49c7-a1a8-59f7be1fee8f"
 
