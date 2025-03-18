@@ -115,7 +115,6 @@ class PluginRunner:
 
 	def on_pr_changed(self, pr: int):
 		results = [plugin.on_pr_changed(pr) for plugin in self.plugins]
-		self.check_for_errors()
 
 		if release_type := next((res for res in results if res is not None), None):
 			# find plugin for release_type
@@ -142,9 +141,10 @@ class PluginRunner:
 				self.backend.git("commit", "-m", f"Prepare release for PR #{pr}")
 				self.backend.git("push")
 
-			self.check_for_errors()
 			self.storage.set(release_marker.as_key(), release_marker)
 		self.comment_on_pr(pr)
+		self.check_for_errors()
+		
 
 	def on_commit_to_main(self):
 		release_infos = [
