@@ -1,6 +1,7 @@
 import subprocess
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from tracemalloc import start
 
 from msgspec import Struct
 
@@ -30,6 +31,15 @@ class PrDescription(Struct):
 	pr_number: int
 
 
+class PrReviewComment(Struct):
+	pr_number: int
+	file: str
+	start_line: int | None
+	end_line: int 
+	content: str
+	content_id: str
+	
+
 class CiBotBackendBase(ABC):
 	def __init__(self, storage: BaseStorage) -> None:
 		super().__init__()
@@ -39,7 +49,16 @@ class CiBotBackendBase(ABC):
 
 	@abstractmethod
 	def create_pr_comment(self, content: str, comment_id: str | None = None) -> None: ...
-
+	
+	@abstractmethod
+	def create_pr_review_comment(self, comment: PrReviewComment) -> None: ...
+	
+	@abstractmethod
+	def get_review_comments_for_content_id(self, id: str) -> list[tuple[int, PrReviewComment]]: ...
+	
+	@abstractmethod
+	def delete_pr_review_comment(self, comment_id: int) -> None: ...
+	
 	@abstractmethod
 	def publish_release(self, release_info: ReleaseInfo) -> None: ...
 

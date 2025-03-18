@@ -1,10 +1,17 @@
+from collections import defaultdict
+import json
+from math import log
+from nt import link
 import re
+import subprocess
 import xml.etree.ElementTree as etree
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
-from typing import override
+from typing import TypedDict, override
 
+from cibot.backends.base import PrReviewComment
+from click import Group
 import jinja2
 from diff_cover.diff_reporter import GitDiffReporter
 from diff_cover.git_diff import GitDiffTool
@@ -12,6 +19,7 @@ from diff_cover.report_generator import MarkdownReportGenerator
 from diff_cover.violationsreporters.violations_reporter import (
 	XmlCoverageReporter,
 )
+from loguru import logger
 from pydantic_settings import BaseSettings
 
 from cibot.plugins.base import BumpType, CiBotPlugin
@@ -35,23 +43,6 @@ def _generate_section_report(
 		markdown_string = markdown_string[markdown_string.find("\n") + 1:]
 		return markdown_string
 
-def create_report_for_cov_file(cov_file: Path, compare_branch: str) -> str | None:
-	git_diff = GitDiffTool(range_notation="...", ignore_whitespace=True)
-	git_diff_reporter = GitDiffReporter(
-		compare_branch=compare_branch,
-		git_diff=git_diff,
-		include_untracked=True,
-		ignore_staged=False,
-		ignore_unstaged=False,
-	)
-	section_name = cov_file.parent.name
-	reporter = XmlCoverageReporter(
-		[etree.parse(cov_file)],
-		src_roots=[Path.cwd()],
-	)
-	section_md = _generate_section_report(reporter, git_diff_reporter, compare_branch=compare_branch)
-	if "No lines with coverage information in this diff." not in section_md:
-		return section_md
 
 
 class DiffCovSettings(BaseSettings):
@@ -63,10 +54,6 @@ class DiffCovSettings(BaseSettings):
 	"""Find coverage files recursively"""
 
 
-@dataclass
-class CovReport:
-	content: str
-	header: str
 
 
 class DiffCovPlugin(CiBotPlugin):
@@ -90,17 +77,93 @@ class DiffCovPlugin(CiBotPlugin):
 			cov_files = list(Path.cwd().rglob("coverage.xml"))
 		else:
 			cov_files = [Path.cwd() / "coverage.xml"]
-		sections: dict[str, CovReport] = {}
 		for cov_file in cov_files:
 			section_name = cov_file.parent.name
-			if content := create_report_for_cov_file(cov_file, settings.COMPARE_BRANCH):
-				header = f"## {section_name} Coverage"
-				report = CovReport(content=content, header=header)
-				sections[section_name] = report
-		comment = COVERAGE_TEMPLATE.render(
-			sections=sections,
-		)
-		self.backend.create_pr_comment(comment, DIFF_COV_COMMENT_ID)
+			report = create_report_for_cov_file(cov_file, settings.COMPARE_BRANCH)
+			grouped_lines_per_file:defaultdict[str, list[tuple[int, int | None]]] = defaultdict(list)
+			for file, stats in report["src_stats"].items():
+				violation_lines = stats.get("violation_lines", [])
+				if violation_lines:
+					for i, start in enumerate(violation_lines):
+						try:
+							prev = start
+							for end in violation_lines[i + 1:]:
+								if end - 1 == prev:
+									prev = end
+									continue
+								else:
+									grouped_lines_per_file[file].append((start, end))
+						except IndexError:
+							grouped_lines_per_file[file].append((start, None))
+			valid_comments: list[tuple[PrReviewComment, tuple[int, int | None]]] = []
+			for id_, comment in self.backend.get_review_comments_for_content_id(DIFF_COV_REVIEW_COMMENT_ID):
+				if comment.file not in grouped_lines_per_file:
+					logger.info(f"{comment.file} is not in the missed cov report deleting prev comment")
+					self.backend.delete_pr_review_comment(id_)
+					continue
+				for violation in grouped_lines_per_file[comment.file]:
+					if violation[0] != comment.start_line and violation[0] != comment.end_line:
+						logger.add(f"Deleting comment {id_} for file {comment.file} in lines {violation[0]}-{violation[1]}")
+						self.backend.delete_pr_review_comment(id_)
+						break
+					else:
+						valid_comments.append((comment, violation))
+						
+			for file, violations in grouped_lines_per_file.items():
+				for violation in violations:
+					for valid_comment, comment_violation in valid_comments:
+						if comment_violation[0] == violation[0] and comment_violation[1] == violation[1]:
+							logger.info(f"skipping creating review comment for violation {file} {violation}")
+							break
+						else:
+							logger.info(f"Creating new comment for file {violation[0]} in lines {violation[0]}-{violation[1]}")
+							self.backend.create_pr_review_comment(
+								PrReviewComment(
+									content="not covered",
+									content_id=DIFF_COV_REVIEW_COMMENT_ID,
+									end_line=violation[0] if violation[0] != comment.end_line else violation[1],
+									start_line=violation[1],
+									file=file,
+									pr_number=pr
+								)
+							)
+						
+	def review_comment_on_pr(self, file: str, lines: tuple[int, int], content: str) -> None:
+		self.backend.create_pr_review_comment(file, link, content)
+		
+	
+DIFF_COV_REVIEW_COMMENT_ID = "diffcov-766f-49c7-a1a8-59f7be1fee8f"
 
 
-DIFF_COV_COMMENT_ID = "diffcov-766f-49c7-a1a8-59f7be1fee8f"
+
+
+class FileStats(TypedDict):
+    percent_covered: float
+    violation_lines: list[int]
+    covered_lines: list[int]
+
+
+class Report(TypedDict):
+    report_name: str
+    diff_name: str
+    src_stats: dict[str, FileStats]
+    total_num_lines: int
+    total_num_violations: int
+    total_percent_covered: float
+    num_changed_lines: int
+
+def create_report_for_cov_file(cov_file: Path, compare_branch: str) -> Report:
+	cmd = f"diff-cover coverage.xml --compare-branch={compare_branch} --json-report report.json"
+	if subprocess.run(cmd, shell=True).returncode != 0:
+		raise ValueError("Failed to generate coverage report")
+	
+	report: Report = json.loads((Path.cwd() / "report.json").read_text())
+	return report
+	
+	
+
+@dataclass
+class CovReport:
+	header: str
+	content: Report
+	

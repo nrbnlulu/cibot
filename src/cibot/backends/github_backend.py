@@ -1,3 +1,4 @@
+from functools import cached_property
 from typing import ClassVar, override
 
 import github
@@ -6,7 +7,7 @@ from github.Repository import Repository
 from loguru import logger
 from pydantic_settings import BaseSettings
 
-from cibot.backends.base import CiBotBackendBase, PRContributor, PrDescription, ReleaseInfo
+from cibot.backends.base import CiBotBackendBase, PRContributor, PrDescription, PrReviewComment, ReleaseInfo
 from cibot.storage_layers.base import BaseStorage
 
 
@@ -52,6 +53,53 @@ class GithubBackend(CiBotBackendBase):
 			content,
 			comment_id or self.BOT_COMMENT_ID,
 		)
+	@override
+	def create_pr_review_comment(self, comment: PrReviewComment) -> None:
+		
+		latest_commit = self._pr.get_commits().reversed[0]
+		content = \
+f"""
+[//]: {self.BOT_COMMENT_ID}
+{comment.content}
+"""	
+		start, end = comment.start_line, comment.end_line
+		if start:
+			self._pr.create_review_comment(
+				body=content,
+				path=comment.file,
+				start_line=start,
+				line=end,
+				commit=latest_commit
+			)
+		else:
+			self._pr.create_review_comment(
+				body=content,
+				path=comment.file,
+				line=end,
+				commit=latest_commit
+			)
+
+	@override
+	def get_review_comments_for_content_id(self, id: str) -> list[tuple[int, PrReviewComment]]:
+		review_comments = self._pr.get_review_comments()
+		ret = []
+		for comment in review_comments:
+			if id in comment.body:
+				pr_comment = PrReviewComment(
+					content_id=id,
+					file=comment.path,
+					start_line=comment.start_line,
+					end_line=comment.line,
+					content=comment.body,
+					pr_number=self._pr.number
+				)
+				ret.append((comment.id, pr_comment))
+		return ret
+
+	@override
+	def delete_pr_review_comment(self, comment_id: int) -> None:
+		self._pr.get_review_comment(comment_id).delete()
+		
 
 	@override
 	def publish_release(self, release_info: ReleaseInfo):
@@ -87,6 +135,11 @@ class GithubBackend(CiBotBackendBase):
 	@override
 	def get_pr_labels(self, pr_number):
 		return [label.name for label in self.repo.get_pull(pr_number).labels]
+	
+	@cached_property
+	def _pr(self) -> github.PullRequest.PullRequest:
+		assert self.pr_number is not None, "pr_number is not set"
+		return self.repo.get_pull(self.pr_number)
 
 	def _create_or_update_bot_comment(
 		self,
@@ -94,7 +147,7 @@ class GithubBackend(CiBotBackendBase):
 		content: str,
 		identifier: str,
 	) -> None:
-		pr = self.repo.get_pull(pr_number)
+		pr = self._pr
 
 		for comment in pr.get_issue_comments():
 			if identifier in comment.body:
