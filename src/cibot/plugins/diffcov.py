@@ -109,11 +109,10 @@ class DiffCovPlugin(CiBotPlugin):
 						pr_number=pr,
 					)
 				)
-		
-		if not self._should_fail_work_flow:
-			self._pr_comment = f"### ✅ Coverage passed"
 
-			
+		if not self._should_fail_work_flow:
+			self._pr_comment = "### ✅ Coverage passed"
+
 	def _group_violations(self, violation_lines: list[int]) -> list[tuple[int, int | None]]:
 		"""
 		Return a list of tuples that are basically ranges of serially increasing numbers.
@@ -159,7 +158,7 @@ class Report(TypedDict):
 
 
 def create_report_for_cov_file(cov_file: Path, compare_branch: str) -> Report:
-	cmd = f"diff-cover coverage.xml --compare-branch={compare_branch} --json-report report.json"
+	cmd = f"diff-cover {cov_file!s} --compare-branch={compare_branch} --json-report report.json"
 	if subprocess.run(cmd, shell=True, check=False).returncode != 0:
 		raise ValueError("Failed to generate coverage report")
 
